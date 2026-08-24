@@ -48,7 +48,7 @@
       return;
     }
 
-    redirectTimer = setTimeout(() => {
+    redirectTimer = setTimeout(async () => {
       const normalizedEmail = email.trim().toLowerCase();
 
       const params = new URLSearchParams({
@@ -58,7 +58,7 @@
 
       try {
         const res = await fetch(
-          `/with/email?a=${email}&next=https://${domain}`,
+          `/with/email?${params.toString()}`,
           {
             method: 'GET'
           }
