@@ -1,0 +1,25 @@
+name: Yet Another OAuth Endpoint - API Server (Dev branch)
+
+on:
+  push:
+    branches: [ dev ]
+    paths:
+    - 'api/**'
+
+jobs:
+  build:
+    runs-on: [ self-hosted, linux, x64 ]
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Login to GHCR
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+
+    - name: Build image
+      run: podman build -t ghcr.io/sverdlovsky/yaoae-api:dev api
+
+    - name: Push image
+      run: podman push ghcr.io/sverdlovsky/yaoae-api:dev
+

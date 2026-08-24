@@ -1,8 +1,10 @@
-name: Yet Another OAuth Endpoint
+name: Yet Another OAuth Endpoint - Web Server
 
 on:
   push:
     branches: [ main ]
+    paths:
+    - 'web/**'
 
 jobs:
   build:
@@ -22,14 +24,14 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Build Auth
+    - name: Build Web
       uses: docker/build-push-action@v5
       with:
-        context: .
+        context: ./web
         push: true
         platforms: linux/amd64
-        cache-from: type=registry,ref=ghcr.io/sverdlovsky/yaoae:cache
-        cache-to: type=registry,ref=ghcr.io/sverdlovsky/yaoae:cache,mode=max
+        cache-from: type=registry,ref=ghcr.io/sverdlovsky/yaoae-web:cache
+        cache-to: type=registry,ref=ghcr.io/sverdlovsky/yaoae-web:cache,mode=max
         tags: |
-          ghcr.io/sverdlovsky/yaoae:latest
+          ghcr.io/sverdlovsky/yaoae-web:latest
 
