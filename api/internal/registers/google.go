@@ -1,4 +1,4 @@
-package main
+package registers
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	xgoogle "golang.org/x/oauth2/google"
 )
 
-func registerGoogle(mux *http.ServeMux, a *app, clientID, clientSecret string) bool {
+func RegisterGoogle(mux *http.ServeMux, a *app, clientID, clientSecret string) bool {
 	if clientID == "" || clientSecret == "" {
 		return false
 	}

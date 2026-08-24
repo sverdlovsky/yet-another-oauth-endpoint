@@ -1,4 +1,4 @@
-package main
+package rrl
 
 import (
 	"context"
@@ -10,14 +10,14 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type rateLimiter struct {
+type RateLimiter struct {
 	rdb    *redis.Client
 	prefix string
 	limit  int64
 	window time.Duration
 }
 
-func (rl *rateLimiter) allow(ctx context.Context, key string) bool {
+func (rl *RateLimiter) allow(ctx context.Context, key string) bool {
 	fullKey := rl.prefix + key
 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
@@ -34,7 +34,7 @@ func (rl *rateLimiter) allow(ctx context.Context, key string) bool {
 	return count <= rl.limit
 }
 
-func clientIP(r *http.Request) string {
+func ClientIP(r *http.Request) string {
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		for i := 0; i < len(xff); i++ {
 			if xff[i] == ',' {
@@ -51,7 +51,7 @@ func clientIP(r *http.Request) string {
 	return host
 }
 
-func tooManyRequests(w http.ResponseWriter, reason string) {
+func TooManyRequests(w http.ResponseWriter, reason string) {
 	http.Error(w, fmt.Sprintf("too many requests: %s", reason), http.StatusTooManyRequests)
 }
 

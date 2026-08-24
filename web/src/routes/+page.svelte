@@ -15,8 +15,8 @@
     'org',
     'pro',
     'info',
-    'site'
-    'online',
+    'site',
+    'online'
   ];
 
   function isValidEmail(value: string): boolean {

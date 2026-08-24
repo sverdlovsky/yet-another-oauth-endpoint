@@ -15,6 +15,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/sessions"
 	"github.com/redis/go-redis/v9"
+
+	"github.com/sverdlovsky/yet-another-oauth-endpoint/internal/registers"
 )
 
 const sessionName = "session"
@@ -62,13 +64,13 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	if registerGoogle(mux, a, googleClientID, googleClientSecret) {
+	if registers.RegisterGoogle(mux, a, googleClientID, googleClientSecret) {
 		log.Println("provider enabled: google")
 	} else {
 		log.Println("provider disabled: google (GOOGLE_CLIENT_ID/SECRET not set)")
 	}
 
-	if registerYandex(mux, a, yandexClientID, yandexClientSecret) {
+	if registers.RegisterYandex(mux, a, yandexClientID, yandexClientSecret) {
 		log.Println("provider enabled: yandex")
 	} else {
 		log.Println("provider disabled: yandex (YANDEX_CLIENT_ID/SECRET not set)")
@@ -79,7 +81,7 @@ func main() {
 		rdb = redis.NewClient(&redis.Options{Addr: redisHost+":"+redisPort})
 	}
 
-	if registerEmail(mux, a, rdb, smtpHost, smtpPort, smtpFrom) {
+	if registers.RegisterEmail(mux, a, rdb, smtpHost, smtpPort, smtpFrom) {
 		log.Println("provider enabled: email")
 	} else {
 		log.Println("provider disabled: email (REDIS_ADDR/SMTP_HOST/SMTP_FROM not set)")

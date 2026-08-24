@@ -1,4 +1,4 @@
-package main
+package registers
 
 import (
 	"context"
@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+
+	"github.com/sverdlovsky/yet-another-oauth-endpoint/pkg/redis-rate-limit"
 )
 
 const magicLinkTTL = 10 * time.Minute
@@ -25,22 +27,22 @@ type magicLinkPayload struct {
 	Next  string `json:"next"`
 }
 
-func registerEmail(mux *http.ServeMux, a *app, rdb *redis.Client, smtpHost, smtpPort, smtpFrom string) bool {
+func RegisterEmail(mux *http.ServeMux, a *app, rdb *redis.Client, smtpHost, smtpPort, smtpFrom string) bool {
 	if rdb == nil || smtpHost == "" || smtpFrom == "" {
 		return false
 	}
 
 	mailer := &smtpMailer{host: smtpHost, port: smtpPort, from: smtpFrom}
 
-	ipLimiter := &rateLimiter{rdb: rdb, prefix: "ratelimit:email:ip:", limit: 10, window: time.Hour}
-	emailLimiter := &rateLimiter{rdb: rdb, prefix: "ratelimit:email:addr:", limit: 3, window: time.Hour}
+	ipLimiter := &rrl.RateLimiter{rdb: rdb, prefix: "ratelimit:email:ip:", limit: 10, window: time.Hour}
+	emailLimiter := &rrl.RateLimiter{rdb: rdb, prefix: "ratelimit:email:addr:", limit: 3, window: time.Hour}
 
 	mux.HandleFunc("GET /with/email", handleEmailRequest(a, rdb, mailer, ipLimiter, emailLimiter))
 	mux.HandleFunc("GET /with/email/callback", handleEmailCallback(a, rdb))
 	return true
 }
 
-func handleEmailRequest(a *app, rdb *redis.Client, mailer *smtpMailer, ipLimiter, emailLimiter *rateLimiter) http.HandlerFunc {
+func handleEmailRequest(a *app, rdb *redis.Client, mailer *smtpMailer, ipLimiter, emailLimiter *rrl.RateLimiter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if a.canonicalRedirect(w, r) {
 			return
@@ -56,12 +58,12 @@ func handleEmailRequest(a *app, rdb *redis.Client, mailer *smtpMailer, ipLimiter
 			return
 		}
 
-		if !ipLimiter.allow(r.Context(), clientIP(r)) {
-			tooManyRequests(w, "too many requests from this address, try again later")
+		if !ipLimiter.allow(r.Context(), rrl.ClientIP(r)) {
+			rrl.TooManyRequests(w, "too many requests from this address, try again later")
 			return
 		}
 		if !emailLimiter.allow(r.Context(), email) {
-			tooManyRequests(w, "too many sign-in emails requested for this address, try again later")
+			rrl.TooManyRequests(w, "too many sign-in emails requested for this address, try again later")
 			return
 		}
 

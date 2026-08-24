@@ -1,4 +1,4 @@
-package main
+package registers
 
 import (
 	"context"
@@ -16,7 +16,7 @@ var yandexEndpoint = oauth2.Endpoint{
 	TokenURL: "https://oauth.yandex.ru/token",
 }
 
-func registerYandex(mux *http.ServeMux, a *app, clientID, clientSecret string) bool {
+func RegisterYandex(mux *http.ServeMux, a *app, clientID, clientSecret string) bool {
 	if clientID == "" || clientSecret == "" {
 		return false
 	}
