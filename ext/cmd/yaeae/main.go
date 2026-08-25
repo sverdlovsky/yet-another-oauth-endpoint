@@ -25,7 +25,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /authz", authzHandler([]byte(jwtSecret)))
+	mux.HandleFunc("GET /", authzHandler([]byte(jwtSecret)))
 
 	srv := &http.Server {
 		Addr:         addr,
