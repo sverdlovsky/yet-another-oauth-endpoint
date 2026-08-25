@@ -1,6 +1,10 @@
 <script lang="ts">
   let domain = window.location.hostname.replaceAll('auth.', '');
 
+  const urlParams = new URLSearchParams(window.location.search);
+  const nextParam = urlParams.get('next');
+  const next = nextParam && nextParam.trim() !== '' ? nextParam : `https://${domain}`;
+
   let email = '';
 
   let redirectTimer: ReturnType<typeof setTimeout> | undefined;
@@ -53,7 +57,7 @@
 
       const params = new URLSearchParams({
         a: normalizedEmail,
-        next: `https://${domain}`,
+        next,
       });
 
       try {
