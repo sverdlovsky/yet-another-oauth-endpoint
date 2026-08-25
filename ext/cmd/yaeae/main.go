@@ -66,8 +66,6 @@ func verifyRequest(r *http.Request, jwtSecret []byte) (email string, ok bool) {
 		}
 		return jwtSecret, nil
 	})
-	// err покрывает и невалидную подпись, и истёкший exp (jwt/v5 проверяет
-	// exp автоматически как часть Parse, если claim присутствует).
 	if err != nil || !token.Valid {
 		log.Printf("authz deny reason=invalid_jwt err=%v", err)
 		return "", false

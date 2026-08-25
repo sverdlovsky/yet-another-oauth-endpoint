@@ -35,7 +35,7 @@
     const emailDomain = normalized.slice(atIndex + 1);
 
     return allowedTlds.some(
-      (tld) => domain.endsWith(`.${tld}`)
+      (tld) => emailDomain.endsWith(`.${tld}`)
     );
   }
 
