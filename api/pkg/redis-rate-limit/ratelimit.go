@@ -10,14 +10,18 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type RateLimiter struct {
+type Limiter struct {
 	rdb    *redis.Client
 	prefix string
 	limit  int64
 	window time.Duration
 }
 
-func (rl *RateLimiter) allow(ctx context.Context, key string) bool {
+func New(rdb *redis.Client, prefix string, limit int64, window time.Duration) *Limiter {
+	return &Limiter{rdb: rdb, prefix: prefix, limit: limit, window: window}
+}
+
+func (rl *Limiter) Allow(ctx context.Context, key string) bool {
 	fullKey := rl.prefix + key
 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)

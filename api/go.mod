@@ -1,4 +1,4 @@
-module github.com/sverdlovsky/yet-another-oauth-endpoint
+module github.com/sverdlovsky/yet-another-oauth-endpoint/api
 
 go 1.26.5
 

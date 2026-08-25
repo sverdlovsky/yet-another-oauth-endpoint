@@ -15,7 +15,9 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/sverdlovsky/yet-another-oauth-endpoint/pkg/redis-rate-limit"
+	"github.com/sverdlovsky/yet-another-oauth-endpoint/api/internal/authapp"
+	"github.com/sverdlovsky/yet-another-oauth-endpoint/api/internal/randtoken"
+	"github.com/sverdlovsky/yet-another-oauth-endpoint/api/pkg/redis-rate-limit"
 )
 
 const magicLinkTTL = 10 * time.Minute
@@ -27,24 +29,24 @@ type magicLinkPayload struct {
 	Next  string `json:"next"`
 }
 
-func RegisterEmail(mux *http.ServeMux, a *app, rdb *redis.Client, smtpHost, smtpPort, smtpFrom string) bool {
+func RegisterEmail(mux *http.ServeMux, a *authapp.App, rdb *redis.Client, smtpHost, smtpPort, smtpFrom string) bool {
 	if rdb == nil || smtpHost == "" || smtpFrom == "" {
 		return false
 	}
 
 	mailer := &smtpMailer{host: smtpHost, port: smtpPort, from: smtpFrom}
 
-	ipLimiter := &rrl.RateLimiter{rdb: rdb, prefix: "ratelimit:email:ip:", limit: 10, window: time.Hour}
-	emailLimiter := &rrl.RateLimiter{rdb: rdb, prefix: "ratelimit:email:addr:", limit: 3, window: time.Hour}
+	ipLimiter := rrl.New(rdb, "ratelimit:email:ip:", 10, time.Hour)
+	emailLimiter := rrl.New(rdb, "ratelimit:email:addr:", 3, time.Hour)
 
 	mux.HandleFunc("GET /with/email", handleEmailRequest(a, rdb, mailer, ipLimiter, emailLimiter))
 	mux.HandleFunc("GET /with/email/callback", handleEmailCallback(a, rdb))
 	return true
 }
 
-func handleEmailRequest(a *app, rdb *redis.Client, mailer *smtpMailer, ipLimiter, emailLimiter *rrl.RateLimiter) http.HandlerFunc {
+func handleEmailRequest(a *authapp.App, rdb *redis.Client, mailer *smtpMailer, ipLimiter, emailLimiter *rrl.Limiter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if a.canonicalRedirect(w, r) {
+		if a.CanonicalRedirect(w, r) {
 			return
 		}
 
@@ -58,21 +60,21 @@ func handleEmailRequest(a *app, rdb *redis.Client, mailer *smtpMailer, ipLimiter
 			return
 		}
 
-		if !ipLimiter.allow(r.Context(), rrl.ClientIP(r)) {
+		if !ipLimiter.Allow(r.Context(), rrl.ClientIP(r)) {
 			rrl.TooManyRequests(w, "too many requests from this address, try again later")
 			return
 		}
-		if !emailLimiter.allow(r.Context(), email) {
+		if !emailLimiter.Allow(r.Context(), email) {
 			rrl.TooManyRequests(w, "too many sign-in emails requested for this address, try again later")
 			return
 		}
 
 		next := r.URL.Query().Get("next")
 		if next == "" {
-			next = "https://" + a.domain + "/"
+			next = "https://" + a.Domain + "/"
 		}
 
-		code, err := randomState()
+		code, err := randtoken.New()
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
@@ -93,7 +95,7 @@ func handleEmailRequest(a *app, rdb *redis.Client, mailer *smtpMailer, ipLimiter
 			return
 		}
 
-		link := fmt.Sprintf("https://auth.%s/with/email/callback?c=%s", a.domain, code)
+		link := fmt.Sprintf("https://auth.%s/with/email/callback?c=%s", a.Domain, code)
 		if err := mailer.sendMagicLink(email, link); err != nil {
 			log.Printf("email: failed to send mail to %s: %v", email, err)
 			rdb.Del(ctx, key)
@@ -106,7 +108,7 @@ func handleEmailRequest(a *app, rdb *redis.Client, mailer *smtpMailer, ipLimiter
 	}
 }
 
-func handleEmailCallback(a *app, rdb *redis.Client) http.HandlerFunc {
+func handleEmailCallback(a *authapp.App, rdb *redis.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		code := r.URL.Query().Get("c")
 		if code == "" {
@@ -138,20 +140,20 @@ func handleEmailCallback(a *app, rdb *redis.Client) http.HandlerFunc {
 			return
 		}
 
-		if err := a.issueSessionCookie(w, payload.Email, ""); err != nil {
+		if err := a.IssueSessionCookie(w, payload.Email, ""); err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
 		next := payload.Next
 		if next == "" {
-			next = "https://" + a.domain + "/"
+			next = "https://" + a.Domain + "/"
 		}
 		if u, err := url.Parse(next); err == nil {
 			http.Redirect(w, r, u.String(), http.StatusFound)
 			return
 		}
-		http.Redirect(w, r, "https://"+a.domain+"/", http.StatusFound)
+		http.Redirect(w, r, "https://"+a.Domain+"/", http.StatusFound)
 	}
 }
 

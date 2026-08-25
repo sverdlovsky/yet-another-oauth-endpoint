@@ -9,6 +9,9 @@ import (
 	"net/url"
 
 	"golang.org/x/oauth2"
+
+	"github.com/sverdlovsky/yet-another-oauth-endpoint/api/internal/authapp"
+	"github.com/sverdlovsky/yet-another-oauth-endpoint/api/internal/randtoken"
 )
 
 var yandexEndpoint = oauth2.Endpoint{
@@ -16,7 +19,7 @@ var yandexEndpoint = oauth2.Endpoint{
 	TokenURL: "https://oauth.yandex.ru/token",
 }
 
-func RegisterYandex(mux *http.ServeMux, a *app, clientID, clientSecret string) bool {
+func RegisterYandex(mux *http.ServeMux, a *authapp.App, clientID, clientSecret string) bool {
 	if clientID == "" || clientSecret == "" {
 		return false
 	}
@@ -25,7 +28,7 @@ func RegisterYandex(mux *http.ServeMux, a *app, clientID, clientSecret string) b
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		Endpoint:     yandexEndpoint,
-		RedirectURL:  fmt.Sprintf("https://auth.%s/with/yandex/callback", a.domain),
+		RedirectURL:  fmt.Sprintf("https://auth.%s/with/yandex/callback", a.Domain),
 		Scopes:       []string{"login:email", "login:info"},
 	}
 
@@ -34,24 +37,24 @@ func RegisterYandex(mux *http.ServeMux, a *app, clientID, clientSecret string) b
 	return true
 }
 
-func handleYandexLogin(a *app, cfg *oauth2.Config) http.HandlerFunc {
+func handleYandexLogin(a *authapp.App, cfg *oauth2.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if a.canonicalRedirect(w, r) {
+		if a.CanonicalRedirect(w, r) {
 			return
 		}
 
 		next := r.URL.Query().Get("next")
 		if next == "" {
-			next = "https://" + a.domain + "/"
+			next = "https://" + a.Domain + "/"
 		}
 
-		state, err := randomState()
+		state, err := randtoken.New()
 		if err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
-		sess, _ := a.sessionStore.Get(r, sessionName)
+		sess, _ := a.SessionStore.Get(r, authapp.SessionName)
 		sess.Values["state"] = state
 		sess.Values["next"] = next
 		if err := sess.Save(r, w); err != nil {
@@ -63,9 +66,9 @@ func handleYandexLogin(a *app, cfg *oauth2.Config) http.HandlerFunc {
 	}
 }
 
-func handleYandexCallback(a *app, cfg *oauth2.Config) http.HandlerFunc {
+func handleYandexCallback(a *authapp.App, cfg *oauth2.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sess, _ := a.sessionStore.Get(r, sessionName)
+		sess, _ := a.SessionStore.Get(r, authapp.SessionName)
 
 		wantState, _ := sess.Values["state"].(string)
 		gotState := r.URL.Query().Get("state")
@@ -95,12 +98,12 @@ func handleYandexCallback(a *app, cfg *oauth2.Config) http.HandlerFunc {
 			return
 		}
 
-		if err := a.issueSessionCookie(w, email, name); err != nil {
+		if err := a.IssueSessionCookie(w, email, name); err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
-		next := a.popNext(sess)
+		next := a.PopNext(sess)
 		if err := sess.Save(r, w); err != nil {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
@@ -110,7 +113,7 @@ func handleYandexCallback(a *app, cfg *oauth2.Config) http.HandlerFunc {
 			http.Redirect(w, r, u.String(), http.StatusFound)
 			return
 		}
-		http.Redirect(w, r, "https://"+a.domain+"/", http.StatusFound)
+		http.Redirect(w, r, "https://"+a.Domain+"/", http.StatusFound)
 	}
 }
 
