@@ -10,17 +10,17 @@ RUN go mod download
 COPY cmd cmd
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w" -o yaoae ./cmd/ext
+    go build -ldflags="-s -w" -o yaeae ./cmd/yaeae
 
 
 FROM scratch
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=build /app/yaoae /yaoae
+COPY --from=build /app/yaeae /yaeae
 
 USER 10001:10001
 
 EXPOSE 8080
 
-ENTRYPOINT ["/yaoae"]
+ENTRYPOINT ["/yaeae"]
 

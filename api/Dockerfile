@@ -12,7 +12,7 @@ COPY internal internal
 COPY cmd cmd
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w" -o yaoae ./cmd/api
+    go build -ldflags="-s -w" -o yaoae ./cmd/yaoae
 
 
 FROM scratch
